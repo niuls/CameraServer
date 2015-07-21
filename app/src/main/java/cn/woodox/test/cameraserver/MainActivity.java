@@ -28,7 +28,7 @@ public class MainActivity extends Activity {
 	private void startServer(){
 		ServerSocket ss;
 		try {
-			ss = new ServerSocket(34567);
+			ss = new ServerSocket(30000);
 			while (true){
 				Socket s = ss.accept();
 				OutputStream os = s.getOutputStream();
