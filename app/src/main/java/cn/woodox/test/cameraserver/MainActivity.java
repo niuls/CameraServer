@@ -4,13 +4,13 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.text.format.Formatter;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
-
-import org.apache.http.protocol.HttpDateGenerator;
-
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -22,7 +22,9 @@ import java.util.Enumeration;
 
 
 public class MainActivity extends Activity {
-	private TextView tvIP,tvPort;
+	private TextView tvIP,tvPort,tvLog;
+	private Button btnConnect;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -41,6 +43,20 @@ public class MainActivity extends Activity {
 	void findViews(){
 		tvIP = (TextView)findViewById(R.id.tvIP);
 		tvPort = (TextView)findViewById(R.id.tvPort);
+		tvLog = (TextView)findViewById(R.id.tvLog);
+		btnConnect = (Button)findViewById(R.id.btnConnect);
+		btnConnect.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				new Thread(){
+					@Override
+					public void run() {
+						super.run();
+						connectServer();
+					}
+				}.start();
+			}
+		});
 	}
 
 	private void startServer(){
@@ -84,6 +100,9 @@ public class MainActivity extends Activity {
 					tvPort.setText("Null");
 				}
 			}
+			if(msg.what == 0x456){
+				tvLog.append(msg.getData().getString("log"));
+			}
 		}
 	};
 
@@ -103,5 +122,24 @@ public class MainActivity extends Activity {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	void connectServer(){
+		try{
+			Socket socket = new Socket(tvIP.getText().toString(),30000);
+			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+			Bundle bundle = new Bundle();
+			bundle.putString("log",br.readLine()+"\n");
+			Message msg = new Message();
+			msg.what = 0x456;
+			msg.setData(bundle);
+			uiHandler.sendMessage(msg);
+
+			br.close();
+			socket.close();
+		}catch (IOException e){
+			e.printStackTrace();
+		}
 	}
 }
