@@ -1,14 +1,22 @@
 package cn.woodox.test.cameraserver;
 
 import android.app.Activity;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -21,7 +29,14 @@ import java.net.SocketException;
 import java.util.Enumeration;
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SurfaceHolder.Callback,
+		Camera.PreviewCallback{
+	private SurfaceView mSurfaceview = null; // SurfaceView对象：(视图组件)视频显示
+	private SurfaceHolder mSurfaceHolder = null; // SurfaceHolder对象：(抽象接口)SurfaceView支持类
+	private Camera mCamera = null; // Camera对象，相机预览
+	private byte frameRaw[] = null;
+	private boolean haveData =false;
+
 	private TextView tvIP,tvPort,tvLog;
 	private Button btnConnect;
 
@@ -29,6 +44,11 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+
+		//禁止屏幕休眠
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 		findViews();
 
 		new Thread(){
@@ -38,6 +58,15 @@ public class MainActivity extends Activity {
 			}
 		}.start();
 		System.out.println("started!");
+	}
+
+	@Override
+	protected void onStart() {
+		mSurfaceHolder = mSurfaceview.getHolder(); // 绑定SurfaceView，取得SurfaceHolder对象
+		mSurfaceHolder.addCallback(this); // SurfaceHolder加入回调接口
+		mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);// 设置显示器类型，setType必须设置
+
+		super.onStart();
 	}
 
 	void findViews(){
@@ -57,6 +86,8 @@ public class MainActivity extends Activity {
 				}.start();
 			}
 		});
+
+		mSurfaceview = (SurfaceView) findViewById(R.id.camera_preview);
 	}
 
 	private void startServer(){
@@ -139,6 +170,97 @@ public class MainActivity extends Activity {
 			br.close();
 			socket.close();
 		}catch (IOException e){
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		InitCamera();
+	}
+
+	/**初始化摄像头*/
+	private void InitCamera(){
+		try{
+			mCamera = Camera.open();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		try{
+			if (mCamera != null) {
+				mCamera.setPreviewCallback(null); // ！！这个必须在前，不然退出出错
+				mCamera.stopPreview();
+				mCamera.release();
+				mCamera = null;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void surfaceCreated(SurfaceHolder holder) {
+		// TODO Auto-generated method stub
+		try {
+			if (mCamera != null) {
+				mCamera.setPreviewDisplay(mSurfaceHolder);
+				mCamera.startPreview();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		// TODO Auto-generated method stub
+		if (mCamera == null) {
+			return;
+		}
+		mCamera.stopPreview();
+		mCamera.setPreviewCallback(this);
+		mCamera.setDisplayOrientation(90); //设置横行录制
+		//获取摄像头参数
+		Camera.Parameters parameters = mCamera.getParameters();
+		Camera.Size size = parameters.getPreviewSize();
+//		VideoWidth=size.width;
+//		VideoHeight=size.height;
+//		VideoFormatIndex=parameters.getPreviewFormat();
+
+		mCamera.startPreview();
+	}
+
+	@Override
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		// TODO Auto-generated method stub
+		if (null != mCamera) {
+			mCamera.setPreviewCallback(null); // ！！这个必须在前，不然退出出错
+			mCamera.stopPreview();
+			mCamera.release();
+			mCamera = null;
+		}
+	}
+
+	@Override
+	public void onPreviewFrame(byte[] data, Camera camera) {
+		frameRaw = data;
+		haveData = true;
+		Camera.Size size = mCamera.getParameters().getPreviewSize();
+		try{
+			YuvImage image = new YuvImage(data, ImageFormat.NV21,size.width,size.height,null);
+			if(image != null){
+				ByteArrayOutputStream stream = new ByteArrayOutputStream();
+				image.compressToJpeg(new Rect(0,0,size.width,size.height),80,stream);
+				DebugLog.i("dataSize:" + data.length);
+				DebugLog.i("jpegSize:"+stream.size());
+			}
+		}catch (Exception e){
 			e.printStackTrace();
 		}
 	}
