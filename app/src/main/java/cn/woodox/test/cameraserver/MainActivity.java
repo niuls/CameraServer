@@ -1,6 +1,8 @@
 package cn.woodox.test.cameraserver;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
@@ -13,11 +15,16 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Inet6Address;
@@ -36,6 +43,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	private Camera mCamera = null; // Camera对象，相机预览
 	private byte frameRaw[] = null;
 	private boolean haveData =false;
+	private Bitmap bmp = null;
+	private ImageView ivBox;
+	private byte jpgBytes[];
 
 	private TextView tvIP,tvPort,tvLog;
 	private Button btnConnect;
@@ -88,6 +98,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		});
 
 		mSurfaceview = (SurfaceView) findViewById(R.id.camera_preview);
+		ivBox = (ImageView)findViewById(R.id.ivBox);
 	}
 
 	private void startServer(){
@@ -105,10 +116,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 
 			while (true){
 				Socket s = ss.accept();
-				OutputStream os = s.getOutputStream();
-				os.write("服务器连接成功！\n".getBytes("utf-8"));
+				DataOutputStream os = new DataOutputStream(s.getOutputStream());
+
+				DebugLog.w("bytes length:" + jpgBytes.length);
+				os.write(jpgBytes);
+//				os.write("服务器连接成功！\n".getBytes("utf-8"));
+				os.flush();
 				os.close();
 				s.close();
+				haveData = false;
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -132,7 +148,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 				}
 			}
 			if(msg.what == 0x456){
-				tvLog.append(msg.getData().getString("log"));
+//				tvLog.append(msg.getData().getString("log"));
+				ivBox.setImageBitmap(bmp);
 			}
 		}
 	};
@@ -158,7 +175,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	void connectServer(){
 		try{
 			Socket socket = new Socket(tvIP.getText().toString(),30000);
-			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+//			byte byteBuffer[] = new byte[1024];
+	/*		BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
 			Bundle bundle = new Bundle();
 			bundle.putString("log",br.readLine()+"\n");
@@ -167,7 +185,31 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 			msg.setData(bundle);
 			uiHandler.sendMessage(msg);
 
-			br.close();
+			br.close();*/
+
+//			InputStream ins = socket.getInputStream();
+
+	/*		DataInputStream dataInput = new DataInputStream(socket.getInputStream());
+			int size = dataInput.available();
+			DebugLog.w("getData:" + size);
+			byte[] data = new byte[size];
+			int len = 0;
+			while (len<size){
+				len+=dataInput.read(data,len,size-len);
+			}
+			dataInput.close();
+			ByteArrayOutputStream outPut = new ByteArrayOutputStream();
+			bmp = BitmapFactory.decodeByteArray(data,0,data.length);
+			bmp.compress(Bitmap.CompressFormat.JPEG, 80, outPut);
+			DebugLog.w("outPut Length:" + outPut.size());
+			outPut.flush();
+			outPut.close();*/
+
+			Message msg = new Message();
+			msg.what = 0x456;
+			uiHandler.sendMessage(msg);
+
+
 			socket.close();
 		}catch (IOException e){
 			e.printStackTrace();
@@ -249,16 +291,25 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 
 	@Override
 	public void onPreviewFrame(byte[] data, Camera camera) {
-		frameRaw = data;
-		haveData = true;
+		ByteArrayOutputStream jpgStream = new ByteArrayOutputStream();
 		Camera.Size size = mCamera.getParameters().getPreviewSize();
+		if(haveData)
+			return;
 		try{
 			YuvImage image = new YuvImage(data, ImageFormat.NV21,size.width,size.height,null);
 			if(image != null){
-				ByteArrayOutputStream stream = new ByteArrayOutputStream();
-				image.compressToJpeg(new Rect(0,0,size.width,size.height),80,stream);
-				DebugLog.i("dataSize:" + data.length);
-				DebugLog.i("jpegSize:"+stream.size());
+				Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test);
+				bitmap.compress(Bitmap.CompressFormat.JPEG,80,jpgStream);
+
+//				image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
+				jpgStream.flush();
+
+				jpgBytes = jpgStream.toByteArray();
+
+				frameRaw = data;
+				haveData = true;
+				DebugLog.w("dataSize:" + data.length);
+				DebugLog.w("jpegSize:" + jpgBytes.length);
 			}
 		}catch (Exception e){
 			e.printStackTrace();
