@@ -18,15 +18,10 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -87,7 +82,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		btnConnect.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				new Thread(){
+				new Thread() {
 					@Override
 					public void run() {
 						super.run();
@@ -117,14 +112,25 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 			while (true){
 				Socket s = ss.accept();
 				DataOutputStream os = new DataOutputStream(s.getOutputStream());
-
-				DebugLog.w("bytes length:" + jpgBytes.length);
-				os.write(jpgBytes);
+				while(true) {
+					if(!haveData){
+						try {
+							Thread.sleep(20);
+						}catch (Exception e){
+							e.printStackTrace();
+						}
+						continue;
+					}
+					DebugLog.w("bytes length:" + jpgBytes.length);
+					DebugLog.e("jpgLenth:" + jpgBytes.length);
+					os.writeInt(jpgBytes.length);
+					os.write(jpgBytes);
 //				os.write("服务器连接成功！\n".getBytes("utf-8"));
-				os.flush();
-				os.close();
-				s.close();
-				haveData = false;
+					os.flush();
+					haveData = false;
+				}
+//				os.close();
+//				s.close();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -175,42 +181,27 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	void connectServer(){
 		try{
 			Socket socket = new Socket(tvIP.getText().toString(),30000);
-//			byte byteBuffer[] = new byte[1024];
-	/*		BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-			Bundle bundle = new Bundle();
-			bundle.putString("log",br.readLine()+"\n");
-			Message msg = new Message();
-			msg.what = 0x456;
-			msg.setData(bundle);
-			uiHandler.sendMessage(msg);
+			DataInputStream dataInput = new DataInputStream(socket.getInputStream());
+			while (true) {
+				int size = dataInput.readInt();
+				byte[] data = new byte[size];
+				int len = 0;
+				while (len < size) {
+					len += dataInput.read(data, len, size - len);
+				}
+//			ByteArrayOutputStream outPut = new ByteArrayOutputStream();
+				bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+				DebugLog.e("lenth:" + data.length);
+//			bmp.compress(Bitmap.CompressFormat.JPEG, 100, outPut);
 
-			br.close();*/
-
-//			InputStream ins = socket.getInputStream();
-
-	/*		DataInputStream dataInput = new DataInputStream(socket.getInputStream());
-			int size = dataInput.available();
-			DebugLog.w("getData:" + size);
-			byte[] data = new byte[size];
-			int len = 0;
-			while (len<size){
-				len+=dataInput.read(data,len,size-len);
+				Message msg = new Message();
+				msg.what = 0x456;
+				uiHandler.sendMessage(msg);
 			}
-			dataInput.close();
-			ByteArrayOutputStream outPut = new ByteArrayOutputStream();
-			bmp = BitmapFactory.decodeByteArray(data,0,data.length);
-			bmp.compress(Bitmap.CompressFormat.JPEG, 80, outPut);
-			DebugLog.w("outPut Length:" + outPut.size());
-			outPut.flush();
-			outPut.close();*/
 
-			Message msg = new Message();
-			msg.what = 0x456;
-			uiHandler.sendMessage(msg);
-
-
-			socket.close();
+//			dataInput.close();
+//			socket.close();
 		}catch (IOException e){
 			e.printStackTrace();
 		}
@@ -298,10 +289,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		try{
 			YuvImage image = new YuvImage(data, ImageFormat.NV21,size.width,size.height,null);
 			if(image != null){
-				Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test);
-				bitmap.compress(Bitmap.CompressFormat.JPEG,80,jpgStream);
-
-//				image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
+				image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
 				jpgStream.flush();
 
 				jpgBytes = jpgStream.toByteArray();
