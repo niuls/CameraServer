@@ -261,10 +261,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		mCamera.setDisplayOrientation(90); //设置横行录制
 		//获取摄像头参数
 		Camera.Parameters parameters = mCamera.getParameters();
-		Camera.Size size = parameters.getPreviewSize();
-//		VideoWidth=size.width;
-//		VideoHeight=size.height;
-//		VideoFormatIndex=parameters.getPreviewFormat();
+		parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+		mCamera.setParameters(parameters);
 
 		mCamera.startPreview();
 	}
