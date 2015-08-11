@@ -38,48 +38,21 @@
             <id>Android Lint</id>
           </State>
           <State>
-            <id>Code style issues</id>
-          </State>
-          <State>
-            <id>Concurrency annotation issues</id>
-          </State>
-          <State>
-            <id>Imports</id>
+            <id>Gradle</id>
           </State>
           <State>
             <id>JUnit issues</id>
           </State>
           <State>
-            <id>Javadoc issues</id>
-          </State>
-          <State>
-            <id>Logging issues</id>
-          </State>
-          <State>
-            <id>Numeric issues</id>
-          </State>
-          <State>
-            <id>Portability issues</id>
-          </State>
-          <State>
-            <id>Probable bugs</id>
+            <id>Probable bugsGradle</id>
           </State>
           <State>
             <id>RELAX NG</id>
           </State>
-          <State>
-            <id>Resource management issues</id>
-          </State>
-          <State>
-            <id>Serialization issues</id>
-          </State>
-          <State>
-            <id>Threading issues</id>
-          </State>
         </expanded-state>
         <selected-state>
           <State>
-            <id>Abstraction issues</id>
+            <id>Android</id>
           </State>
         </selected-state>
       </profile-state>
@@ -100,5 +73,21 @@
   </component>
   <component name="ProjectType">
     <option name="id" value="Android" />
+  </component>
+  <component name="masterDetails">
+    <states>
+      <state key="ProjectJDKs.UI">
+        <settings>
+          <last-edited>1.7</last-edited>
+          <splitter-proportions>
+            <option name="proportions">
+              <list>
+                <option value="0.2" />
+              </list>
+            </option>
+          </splitter-proportions>
+        </settings>
+      </state>
+    </states>
   </component>
 </project>
