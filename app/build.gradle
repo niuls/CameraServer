@@ -17,6 +17,12 @@ android {
 			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
 		}
 	}
+//	so文件放在main下面的jniLibs里面似乎不再须要下面这段话了。
+//	sourceSets {
+//		main {
+//			jniLibs.srcDirs = ['libs']
+//		}
+//	}
 }
 
 dependencies {
