@@ -278,9 +278,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	public class MyLocationListener implements BDLocationListener {
 
 		@Override
-		public void onReceiveLocation(BDLocation location) {
+		public void onReceiveLocation(final BDLocation location) {
 			//Receive Location
-			StringBuffer sb = new StringBuffer(256);
+			final StringBuffer sb = new StringBuffer(256);
 			sb.append("time : ");
 			sb.append(location.getTime());
 			sb.append("\nerror code : ");
@@ -338,6 +338,26 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 				}
 			}
 			Log.i("BaiduLocationApiDem", sb.toString());
+			new Thread() {
+				@Override
+				public void run() {
+					super.run();
+					if (targetAddr == null) {
+						return;
+					}
+					try {
+						String addr[] = targetAddr.split(":");
+						Socket socket = new Socket(addr[0], Integer.parseInt(addr[1]));
+						DataOutputStream os = new DataOutputStream(socket.getOutputStream());
+						os.writeUTF(sb.toString());
+						os.flush();
+						os.close();
+						socket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}.start();
 		}
 	}
 
