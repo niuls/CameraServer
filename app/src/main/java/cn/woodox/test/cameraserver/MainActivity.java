@@ -1,16 +1,12 @@
 package cn.woodox.test.cameraserver;
 
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -57,7 +53,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	private TextView tvIP, tvPort, tvLog;
 	private Button btnConnect;
 
-//	private LocationManager locationManager;
+	//	private LocationManager locationManager;
 	private String targetAddr = null;
 
 	public LocationClient mLocationClient = null;
@@ -257,12 +253,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		}
 	};
 
-	private void initLocation(){
+	private void initLocation() {
 		LocationClientOption option = new LocationClientOption();
 		option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy
 		);//可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
 		option.setCoorType("bd09ll");//可选，默认gcj02，设置返回的定位结果坐标系
-		int span=1000;
+		int span = 1000;
 		option.setScanSpan(span);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
 		option.setIsNeedAddress(true);//可选，设置是否需要地址信息，默认不需要
 		option.setOpenGps(true);//可选，默认false,设置是否使用gps
@@ -281,10 +277,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		public void onReceiveLocation(final BDLocation location) {
 			//Receive Location
 			final StringBuffer sb = new StringBuffer(256);
-			sb.append("time : ");
-			sb.append(location.getTime());
-			sb.append("\nerror code : ");
-			sb.append(location.getLocType());
+//			sb.append("time : ");
+//			sb.append(location.getTime());
+//			sb.append("\nerror code : ");
+//			sb.append(location.getLocType());
 			sb.append("\nlatitude : ");
 			sb.append(location.getLatitude());
 			sb.append("\nlontitude : ");
@@ -309,10 +305,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 				sb.append("\naddr : ");
 				sb.append(location.getAddrStr());
 				//运营商信息
-				sb.append("\noperationers : ");
-				sb.append(location.getOperators());
-				sb.append("\ndescribe : ");
-				sb.append("网络定位成功");
+//				sb.append("\noperationers : ");
+//				sb.append(location.getOperators());
+//				sb.append("\ndescribe : ");
+//				sb.append("网络定位成功");
 			} else if (location.getLocType() == BDLocation.TypeOffLineLocation) {// 离线定位结果
 				sb.append("\ndescribe : ");
 				sb.append("离线定位成功，离线定位结果也是有效的");
@@ -459,11 +455,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		}
 		mCamera.stopPreview();
 		mCamera.setPreviewCallback(this);
-		mCamera.setDisplayOrientation(0); //设置横行录制
+		mCamera.setDisplayOrientation(90); //设置横行录制
 		//获取摄像头参数
 		Camera.Parameters parameters = mCamera.getParameters();
 		parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-		parameters.setRotation(180);
 		mCamera.setParameters(parameters);
 
 		mCamera.startPreview();
