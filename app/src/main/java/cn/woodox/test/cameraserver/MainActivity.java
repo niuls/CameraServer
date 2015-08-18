@@ -35,8 +35,11 @@ import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback,
@@ -49,6 +52,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	private Bitmap bmp = null;
 	private ImageView ivBox;
 	private byte jpgBytes[];
+	private long lastCompTime = 0;
 
 	private TextView tvIP, tvPort, tvLog;
 	private Button btnConnect;
@@ -58,6 +62,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 
 	public LocationClient mLocationClient = null;
 	public BDLocationListener myListener = new MyLocationListener();
+
+	private int fps =0;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -147,7 +153,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 */
 
 		findViews();
-
 		new Thread() {
 			@Override
 			public void run() {
@@ -156,6 +161,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		}.start();
 		System.out.println("started!");
 
+		new Timer().schedule(new TimerTask() {
+			@Override
+			public void run() {
+				Message msg = new Message();
+				msg.what = 0x789;
+				uiHandler.sendMessage(msg);
+			}
+		},1000,1000);
 	}
 
 	@Override
@@ -204,7 +217,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 
 			while (true) {
 				Socket s = ss.accept();
-				DataInputStream is = new DataInputStream(s.getInputStream());
+				new SendThread(s).start();
+
+/*				DataInputStream is = new DataInputStream(s.getInputStream());
 				targetAddr = is.readUTF();
 				DataOutputStream os = new DataOutputStream(s.getOutputStream());
 				while (true) {
@@ -221,7 +236,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 //				os.write("服务器连接成功！\n".getBytes("utf-8"));
 					os.flush();
 					haveData = false;
-				}
+				}*/
 //				os.close();
 //				s.close();
 			}
@@ -249,6 +264,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 			if (msg.what == 0x456) {
 //				tvLog.append(msg.getData().getString("log"));
 				ivBox.setImageBitmap(bmp);
+			}
+			if(msg.what == 0x789){
+				tvLog.setText("FPS: "+fps);
+				fps = 0;
 			}
 		}
 	};
@@ -414,6 +433,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 	private void InitCamera() {
 		try {
 			mCamera = Camera.open();
+			new CompressThread().start();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -459,6 +479,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 		//获取摄像头参数
 		Camera.Parameters parameters = mCamera.getParameters();
 		parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+		parameters.setPreviewFrameRate(30);
 		mCamera.setParameters(parameters);
 
 		mCamera.startPreview();
@@ -477,23 +498,90 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,
 
 	@Override
 	public void onPreviewFrame(byte[] data, Camera camera) {
-		ByteArrayOutputStream jpgStream = new ByteArrayOutputStream();
-		Camera.Size size = mCamera.getParameters().getPreviewSize();
+//		ByteArrayOutputStream jpgStream = new ByteArrayOutputStream();
+//		Camera.Size size = mCamera.getParameters().getPreviewSize();
 		if (haveData)
 			return;
-		try {
-			YuvImage image = new YuvImage(data, ImageFormat.NV21, size.width, size.height, null);
-			if (image != null) {
-				image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
-				jpgStream.flush();
+		frameRaw = data;
+		haveData = true;
+//		try {
+//			YuvImage image = new YuvImage(data, ImageFormat.NV21, size.width, size.height, null);
+//			if (image != null) {
+//				image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
+//				jpgStream.flush();
+//				jpgBytes = jpgStream.toByteArray();
+//		}
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+	}
 
-				jpgBytes = jpgStream.toByteArray();
+	class CompressThread extends Thread {
+		Camera.Size size = mCamera.getParameters().getPreviewSize();
 
-				frameRaw = data;
-				haveData = true;
+		@Override
+		public void run() {
+			super.run();
+			while (true) {
+				if (haveData) {
+					try {
+						YuvImage image = new YuvImage(frameRaw, ImageFormat.NV21, size.width, size.height, null);
+						haveData = false;
+						if (image != null) {
+							ByteArrayOutputStream jpgStream = new ByteArrayOutputStream();
+							image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, jpgStream);
+							jpgStream.flush();
+							jpgBytes = jpgStream.toByteArray();
+							jpgStream.close();
+							lastCompTime = new Date().getTime();
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}else{
+					try{
+						Thread.sleep(20);
+					}catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		}
+	}
+
+	class SendThread extends Thread{
+		Socket s = null;
+		public SendThread(Socket s){
+			this.s = s;
+		}
+		@Override
+		public void run() {
+			super.run();
+			try {
+				DataInputStream is = new DataInputStream(s.getInputStream());
+				targetAddr = is.readUTF();
+				DataOutputStream os = new DataOutputStream(s.getOutputStream());
+				long timeFlag = 0;
+				while (true) {
+					if(timeFlag != lastCompTime) {
+						os.writeInt(jpgBytes.length);
+						os.write(jpgBytes);
+						os.flush();
+						timeFlag = lastCompTime;
+						fps++;
+					}else{
+						try{
+							Thread.sleep(20);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+//				os.close();
+//				s.close();
 		}
 	}
 }
